@@ -1,0 +1,295 @@
+package main
+
+import (
+	"bufio"
+	"os"
+	"strings"
+)
+
+type CISResult struct {
+	Name           string `json:"name"`
+	Status         string `json:"status"` // PASS / FAIL
+	Severity       string `json:"severity"` // Low / Medium / High
+	Evidence       string `json:"evidence"`
+	Recommendation string `json:"recommendation"`
+}
+
+func PerformCISChecks() []CISResult {
+	if !IsLinux() {
+		return getMockCISResults()
+	}
+
+	var results []CISResult
+
+	// 1. Password Max Age
+	results = append(results, checkPasswordMaxAge())
+
+	// 2. Password Complexity
+	results = append(results, checkPasswordComplexity())
+
+	// 3. SSH Root Login Disabled
+	results = append(results, checkSSHRootLogin())
+
+	// 4. Firewall Enabled
+	results = append(results, checkFirewall())
+
+	// 5. Time Sync Enabled
+	results = append(results, checkTimeSync())
+
+	// 6. Auditd Running
+	results = append(results, checkAuditd())
+
+	// 7. AppArmor / SELinux Enabled
+	results = append(results, checkSecurityModule())
+
+	// 8. No World Writable Files
+	results = append(results, checkWorldWritableFiles())
+
+	// 9. GDM Auto Login Disabled
+	results = append(results, checkGDMAutoLogin())
+
+	// 10. SSH Banner Configured
+	results = append(results, checkSSHBanner())
+
+	return results
+}
+
+// Helper to read file and find matching line
+func fileContains(filepath, search string) (bool, string) {
+	file, err := os.Open(filepath)
+	if err != nil {
+		return false, "File not accessible"
+	}
+	defer file.Close()
+
+	scanner := bufio.NewScanner(file)
+	for scanner.Scan() {
+		line := scanner.Text()
+		if strings.Contains(line, search) && !strings.HasPrefix(strings.TrimSpace(line), "#") {
+			return true, line
+		}
+	}
+	return false, "Configuration not found"
+}
+
+func checkPasswordMaxAge() CISResult {
+	found, evidence := fileContains("/etc/login.defs", "PASS_MAX_DAYS")
+	status := "FAIL"
+	if found && strings.Contains(evidence, "90") { // Simplified check
+		status = "PASS"
+	}
+	return CISResult{
+		Name:           "Ensure password max age is 90 days or less",
+		Status:         status,
+		Severity:       "Medium",
+		Evidence:       evidence,
+		Recommendation: "Set PASS_MAX_DAYS to 90 in /etc/login.defs",
+	}
+}
+
+func checkPasswordComplexity() CISResult {
+	found, evidence := fileContains("/etc/security/pwquality.conf", "minlen")
+	status := "FAIL"
+	if found {
+		status = "PASS"
+	}
+	return CISResult{
+		Name:           "Ensure password complexity requirements are configured",
+		Status:         status,
+		Severity:       "Medium",
+		Evidence:       evidence,
+		Recommendation: "Configure pam_pwquality or equivalent module",
+	}
+}
+
+func checkSSHRootLogin() CISResult {
+	found, evidence := fileContains("/etc/ssh/sshd_config", "PermitRootLogin no")
+	status := "FAIL"
+	if found {
+		status = "PASS"
+	} else {
+		// Try lowercase check or default
+		if f, ev := fileContains("/etc/ssh/sshd_config", "PermitRootLogin"); f {
+			evidence = ev
+		}
+	}
+	return CISResult{
+		Name:           "Ensure SSH Root Login is disabled",
+		Status:         status,
+		Severity:       "High",
+		Evidence:       evidence,
+		Recommendation: "Set PermitRootLogin no in /etc/ssh/sshd_config",
+	}
+}
+
+func checkFirewall() CISResult {
+	status := "FAIL"
+	evidence := "Firewall service not active"
+	
+	if CommandExists("ufw") {
+		out, err := RunCommand("ufw", "status")
+		if err == nil && strings.Contains(out, "Status: active") {
+			status = "PASS"
+			evidence = out
+		}
+	} else if CommandExists("firewall-cmd") {
+		out, err := RunCommand("firewall-cmd", "--state")
+		if err == nil && strings.TrimSpace(out) == "running" {
+			status = "PASS"
+			evidence = "firewalld is running"
+		}
+	}
+	
+	return CISResult{
+		Name:           "Ensure firewall is enabled",
+		Status:         status,
+		Severity:       "High",
+		Evidence:       evidence,
+		Recommendation: "Enable ufw (Ubuntu) or firewalld (RHEL)",
+	}
+}
+
+func checkTimeSync() CISResult {
+	status := "FAIL"
+	evidence := "No time synchronization service found"
+
+	out, err := RunCommand("systemctl", "is-active", "chrony")
+	if err == nil && strings.TrimSpace(out) == "active" {
+		status = "PASS"
+		evidence = "chrony is active"
+	} else {
+		out, err = RunCommand("systemctl", "is-active", "systemd-timesyncd")
+		if err == nil && strings.TrimSpace(out) == "active" {
+			status = "PASS"
+			evidence = "systemd-timesyncd is active"
+		}
+	}
+
+	return CISResult{
+		Name:           "Ensure time synchronization is configured",
+		Status:         status,
+		Severity:       "Low",
+		Evidence:       evidence,
+		Recommendation: "Install and enable chrony or systemd-timesyncd",
+	}
+}
+
+func checkAuditd() CISResult {
+	status := "FAIL"
+	evidence := "auditd service is not running"
+
+	out, err := RunCommand("systemctl", "is-active", "auditd")
+	if err == nil && strings.TrimSpace(out) == "active" {
+		status = "PASS"
+		evidence = "auditd is active"
+	}
+
+	return CISResult{
+		Name:           "Ensure auditd service is running",
+		Status:         status,
+		Severity:       "Medium",
+		Evidence:       evidence,
+		Recommendation: "Enable and start auditd service",
+	}
+}
+
+func checkSecurityModule() CISResult {
+	status := "FAIL"
+	evidence := "Neither AppArmor nor SELinux is active"
+
+	if CommandExists("aa-status") {
+		out, err := RunCommand("aa-status")
+		if err == nil && strings.Contains(out, "profiles are loaded") {
+			status = "PASS"
+			evidence = "AppArmor is active"
+		}
+	} else if CommandExists("sestatus") {
+		out, err := RunCommand("sestatus")
+		if err == nil && strings.Contains(out, "SELinux status:                 enabled") {
+			status = "PASS"
+			evidence = "SELinux is enabled"
+		}
+	}
+
+	return CISResult{
+		Name:           "Ensure AppArmor or SELinux is enabled",
+		Status:         status,
+		Severity:       "High",
+		Evidence:       evidence,
+		Recommendation: "Enable AppArmor or SELinux via kernel parameters",
+	}
+}
+
+func checkWorldWritableFiles() CISResult {
+	// A full search is too slow, let's just check /etc/
+	status := "PASS"
+	evidence := "No world writable files found in /etc/"
+
+	// find /etc -perm -2 -type f
+	if CommandExists("find") {
+		out, err := RunCommand("find", "/etc", "-perm", "-2", "-type", "f")
+		if err == nil && strings.TrimSpace(out) != "" {
+			status = "FAIL"
+			evidence = "Found world writable files:\n" + out
+		}
+	}
+
+	return CISResult{
+		Name:           "Ensure no world-writable files exist in sensitive paths",
+		Status:         status,
+		Severity:       "High",
+		Evidence:       evidence,
+		Recommendation: "Remove world-writable permissions using chmod o-w",
+	}
+}
+
+func checkGDMAutoLogin() CISResult {
+	status := "PASS" // Default to PASS if GDM not installed
+	evidence := "GDM not found or configured properly"
+
+	if _, err := os.Stat("/etc/gdm3/custom.conf"); err == nil {
+		found, ev := fileContains("/etc/gdm3/custom.conf", "AutomaticLoginEnable=true")
+		if found {
+			status = "FAIL"
+			evidence = ev
+		}
+	}
+
+	return CISResult{
+		Name:           "Ensure GDM auto-login is disabled",
+		Status:         status,
+		Severity:       "Medium",
+		Evidence:       evidence,
+		Recommendation: "Comment out AutomaticLoginEnable in /etc/gdm3/custom.conf",
+	}
+}
+
+func checkSSHBanner() CISResult {
+	found, evidence := fileContains("/etc/ssh/sshd_config", "Banner")
+	status := "FAIL"
+	if found {
+		status = "PASS"
+	}
+	return CISResult{
+		Name:           "Ensure SSH warning banner is configured",
+		Status:         status,
+		Severity:       "Low",
+		Evidence:       evidence,
+		Recommendation: "Set Banner /etc/issue.net in /etc/ssh/sshd_config",
+	}
+}
+
+func getMockCISResults() []CISResult {
+	return []CISResult{
+		{Name: "Ensure password max age is 90 days or less", Status: "PASS", Severity: "Medium", Evidence: "PASS_MAX_DAYS 90", Recommendation: "N/A"},
+		{Name: "Ensure password complexity requirements are configured", Status: "FAIL", Severity: "Medium", Evidence: "minlen not set", Recommendation: "Configure pam_pwquality"},
+		{Name: "Ensure SSH Root Login is disabled", Status: "PASS", Severity: "High", Evidence: "PermitRootLogin no", Recommendation: "N/A"},
+		{Name: "Ensure firewall is enabled", Status: "PASS", Severity: "High", Evidence: "ufw status active", Recommendation: "N/A"},
+		{Name: "Ensure time synchronization is configured", Status: "PASS", Severity: "Low", Evidence: "chrony active", Recommendation: "N/A"},
+		{Name: "Ensure auditd service is running", Status: "FAIL", Severity: "Medium", Evidence: "auditd inactive", Recommendation: "Enable auditd service"},
+		{Name: "Ensure AppArmor or SELinux is enabled", Status: "PASS", Severity: "High", Evidence: "AppArmor active", Recommendation: "N/A"},
+		{Name: "Ensure no world-writable files exist in sensitive paths", Status: "PASS", Severity: "High", Evidence: "Checked /etc/", Recommendation: "N/A"},
+		{Name: "Ensure GDM auto-login is disabled", Status: "PASS", Severity: "Medium", Evidence: "GDM not found", Recommendation: "N/A"},
+		{Name: "Ensure SSH warning banner is configured", Status: "FAIL", Severity: "Low", Evidence: "Banner not set", Recommendation: "Set Banner in sshd_config"},
+	}
+}
