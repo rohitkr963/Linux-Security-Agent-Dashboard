@@ -4,13 +4,15 @@ const router   = express.Router();
 const asyncHandler       = require('../utils/asyncHandler');
 const reportController   = require('../controllers/reportController');
 const dashboardController= require('../controllers/dashboardController');
+const trendController    = require('../controllers/trendController');
 const hostController     = require('../controllers/hostController');
 
 // ── Ingestion ────────────────────────────────────────────────────────────────
 router.post('/report',              asyncHandler(reportController.ingestReport));
 
 // ── Dashboard ────────────────────────────────────────────────────────────────
-router.get('/dashboard/summary',    asyncHandler(dashboardController.getSummary));
+router.get('/dashboard/summary',          asyncHandler(dashboardController.getSummary));
+router.get('/dashboard/compliance-trend', asyncHandler(trendController.getTrend));
 
 // ── Hosts ────────────────────────────────────────────────────────────────────
 router.get('/hosts',                asyncHandler(hostController.getHosts));

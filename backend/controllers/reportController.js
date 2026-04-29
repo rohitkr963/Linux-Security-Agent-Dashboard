@@ -83,6 +83,12 @@ exports.ingestReport = async (req, res) => {
       }
     }
 
+    // ── Store Scan History ────────────────────────────────────────────────────
+    await db.run(
+      'INSERT INTO scan_history (hostId, score, createdAt) VALUES (?, ?, ?)',
+      [safeHostId, safeScore, now]
+    );
+
     await db.commitTransaction();
     console.log(`[REPORT] Ingested host: ${safeHostId} (${safeHostname})`);
     return created(res, { message: 'Report ingested successfully', hostId: safeHostId });

@@ -1,0 +1,4 @@
+packages: id,host_id,name,version
+hosts: id,hostname,os_name,os_version,kernel_version,ip_address,current_user,uptime,last_seen
+checks: id,hostId,title,status,severity,evidence,remediation,createdAt
+scan_history: id,hostId,score,createdAt

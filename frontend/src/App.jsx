@@ -2,42 +2,53 @@ import React, { useState, useEffect } from 'react';
 import Dashboard from './components/Dashboard';
 import Hosts from './components/Hosts';
 import HostDetails from './components/HostDetails';
-
-const API_URL = 'https://hostguard.duckdns.org/api';
+import { fetchSummary, fetchTrend } from './utils/api';
 
 function App() {
   const [currentPage, setCurrentPage] = useState('dashboard');
   const [selectedHostId, setSelectedHostId] = useState(null);
   const [selectedHostName, setSelectedHostName] = useState('');
+  
   const [stats, setStats] = useState({
     totalHosts: 0,
+    onlineHosts: 0,
+    staleHosts: 0,
+    offlineHosts: 0,
     totalPackages: 0,
     passedChecks: 0,
     failedChecks: 0,
-    compliancePercent: 100
+    compliancePercent: 100,
+    recentAlerts: [],
+    recentScans: []
   });
+  const [trend, setTrend] = useState([]);
+  const [lastUpdated, setLastUpdated] = useState(null);
+  
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  const fetchStats = async () => {
+  const loadDashboardData = async () => {
     try {
-      const res = await fetch(`${API_URL}/dashboard/summary`);
-      if (!res.ok) throw new Error('Failed to fetch summary');
-      const data = await res.json();
-      setStats(data);
+      const [statsData, trendData] = await Promise.all([
+        fetchSummary(),
+        fetchTrend()
+      ]);
+      setStats(statsData);
+      setTrend(trendData);
+      setLastUpdated(Date.now());
       setError(null);
     } catch (err) {
       console.error('Error fetching stats:', err);
       setError('Backend server not responding. Ensure it is running on port 5000.');
     } finally {
-      setLoading(false);
+      if (loading) setLoading(false);
     }
   };
 
   useEffect(() => {
-    fetchStats();
-    // Auto refresh every 30 seconds
-    const interval = setInterval(fetchStats, 30000);
+    loadDashboardData();
+    // Auto refresh every 10 seconds
+    const interval = setInterval(loadDashboardData, 10000);
     return () => clearInterval(interval);
   }, []);
 
@@ -49,7 +60,7 @@ function App() {
 
   return (
     <div className="app-container">
-      <header className="header">
+      <header className="header" style={{ marginBottom: '1.5rem' }}>
         <div>
           <h1>Linux Security Compliance</h1>
           <p>Continuous security monitoring & CIS benchmarking</p>
@@ -65,7 +76,7 @@ function App() {
             className={`btn ${currentPage === 'hosts' ? 'btn-primary' : 'btn-outline'}`}
             onClick={() => setCurrentPage('hosts')}
           >
-            Hosts
+            Fleet Inventory
           </button>
         </nav>
       </header>
@@ -76,22 +87,26 @@ function App() {
         </div>
       )}
 
-      {loading ? (
-        <div className="loading">Loading dashboard data...</div>
-      ) : (
-        <>
-          {currentPage === 'dashboard' && (
-            <Dashboard stats={stats} onNavigateToHosts={() => setCurrentPage('hosts')} />
-          )}
-          
-          {currentPage === 'hosts' && (
-            <Hosts onViewDetails={navigateToHostDetails} />
-          )}
+      {currentPage === 'dashboard' && (
+        <Dashboard 
+          stats={stats} 
+          trend={trend}
+          loading={loading}
+          lastUpdated={lastUpdated}
+          onNavigateToHosts={() => setCurrentPage('hosts')} 
+        />
+      )}
+      
+      {currentPage === 'hosts' && (
+        <Hosts onViewDetails={navigateToHostDetails} />
+      )}
 
-          {currentPage === 'host-details' && (
-            <HostDetails hostId={selectedHostId} hostname={selectedHostName} onBack={() => setCurrentPage('hosts')} />
-          )}
-        </>
+      {currentPage === 'host-details' && (
+        <HostDetails 
+          hostId={selectedHostId} 
+          hostname={selectedHostName} 
+          onBack={() => setCurrentPage('hosts')} 
+        />
       )}
     </div>
   );

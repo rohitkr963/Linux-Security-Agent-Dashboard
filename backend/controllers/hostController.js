@@ -18,7 +18,12 @@ exports.getHosts = async (_req, res) => {
       os          AS os_name,
       ''          AS os_version,
       complianceScore,
-      lastSeen    AS last_seen
+      lastSeen    AS last_seen,
+      CASE 
+        WHEN strftime('%s', 'now') - strftime('%s', lastSeen) <= 300 THEN 'online'
+        WHEN strftime('%s', 'now') - strftime('%s', lastSeen) <= 900 THEN 'stale'
+        ELSE 'offline'
+      END AS status
     FROM hosts
     ORDER BY lastSeen DESC
   `);
@@ -38,6 +43,8 @@ exports.getHostById = async (req, res) => {
     os_version:      '',
     complianceScore: raw.complianceScore,
     last_seen:       raw.lastSeen,
+    status:          (Math.floor(Date.now() / 1000) - Math.floor(new Date(raw.lastSeen).getTime() / 1000) <= 300) ? 'online' :
+                     (Math.floor(Date.now() / 1000) - Math.floor(new Date(raw.lastSeen).getTime() / 1000) <= 900) ? 'stale' : 'offline'
   });
 };
 

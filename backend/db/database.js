@@ -52,12 +52,24 @@ const initDB = () => {
       )
     `);
 
+    db.run(`
+      CREATE TABLE IF NOT EXISTS scan_history (
+        id          INTEGER PRIMARY KEY AUTOINCREMENT,
+        hostId      TEXT NOT NULL,
+        score       REAL NOT NULL,
+        createdAt   DATETIME DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY(hostId) REFERENCES hosts(hostId) ON DELETE CASCADE
+      )
+    `);
+
     // Performance indexes
     db.run('CREATE INDEX IF NOT EXISTS idx_hosts_hostId   ON hosts(hostId)');
     db.run('CREATE INDEX IF NOT EXISTS idx_hosts_lastSeen ON hosts(lastSeen)');
     db.run('CREATE INDEX IF NOT EXISTS idx_checks_hostId  ON checks(hostId)');
     db.run('CREATE INDEX IF NOT EXISTS idx_checks_status  ON checks(status)');
     db.run('CREATE INDEX IF NOT EXISTS idx_pkgs_hostId    ON packages(hostId)');
+    db.run('CREATE INDEX IF NOT EXISTS idx_scan_history_hostId ON scan_history(hostId)');
+    db.run('CREATE INDEX IF NOT EXISTS idx_scan_history_createdAt ON scan_history(createdAt)');
 
     console.log('[DB] Schema initialized.');
   });
