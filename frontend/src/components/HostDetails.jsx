@@ -151,7 +151,13 @@ function HostDetails({ hostId, hostname, onBack }) {
 
   const currentStatus = React.useMemo(() => {
     if (!hostMeta || !hostMeta.last_seen) return 'inactive';
-    const diffMs = Date.now() - new Date(hostMeta.last_seen).getTime();
+    const dateInput = hostMeta.last_seen;
+    const date = new Date(
+      typeof dateInput === 'string' && dateInput.includes(' ') 
+        ? dateInput.replace(' ', 'T') + 'Z' 
+        : dateInput
+    );
+    const diffMs = Date.now() - date.getTime();
     return diffMs < 120 * 1000 ? 'active' : 'inactive';
   }, [hostMeta]);
 

@@ -17,6 +17,7 @@ router.post('/ingest', async (req, res) => {
 
     if (host) {
       hostId = host.id;
+      const now = new Date().toISOString();
       await db.run(
         `UPDATE hosts SET 
           os_name = ?, 
@@ -25,7 +26,7 @@ router.post('/ingest', async (req, res) => {
           ip_address = ?, 
           current_user = ?, 
           uptime = ?, 
-          last_seen = CURRENT_TIMESTAMP 
+          last_seen = ? 
         WHERE id = ?`,
         [
           hostInfo.os_name,
@@ -34,13 +35,15 @@ router.post('/ingest', async (req, res) => {
           hostInfo.ip_address,
           hostInfo.current_user,
           hostInfo.uptime,
+          now,
           hostId
         ]
       );
     } else {
+      const now = new Date().toISOString();
       const result = await db.run(
-        `INSERT INTO hosts (hostname, os_name, os_version, kernel_version, ip_address, current_user, uptime) 
-         VALUES (?, ?, ?, ?, ?, ?, ?)`,
+        `INSERT INTO hosts (hostname, os_name, os_version, kernel_version, ip_address, current_user, uptime, last_seen) 
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
         [
           hostInfo.hostname,
           hostInfo.os_name,
@@ -48,7 +51,8 @@ router.post('/ingest', async (req, res) => {
           hostInfo.kernel_version,
           hostInfo.ip_address,
           hostInfo.current_user,
-          hostInfo.uptime
+          hostInfo.uptime,
+          now
         ]
       );
       hostId = result.id;

@@ -1,7 +1,11 @@
 export function formatRelativeTime(dateInput) {
   if (!dateInput) return '—';
   
-  const date = new Date(dateInput);
+  const date = new Date(
+    typeof dateInput === 'string' && dateInput.includes(' ') 
+      ? dateInput.replace(' ', 'T') + 'Z' 
+      : dateInput
+  );
   const diffMs = Date.now() - date.getTime();
   const diffSec = Math.floor(diffMs / 1000);
   

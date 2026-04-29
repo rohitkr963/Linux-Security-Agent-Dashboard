@@ -69,10 +69,10 @@ func CollectHostInfo() HostInfo {
 			}
 		}
 	} else {
-		info.OSName = "Windows (Mocked for Linux Agent Demo)"
-		info.OSVersion = "11"
-		info.KernelVersion = "NT 10.0"
-		info.Uptime = "3600 seconds"
+		info.OSName = runtime.GOOS
+		info.OSVersion = runtime.GOARCH
+		info.KernelVersion = runtime.Compiler
+		info.Uptime = "unknown"
 	}
 
 	// IP Address
@@ -107,10 +107,7 @@ func getLocalIP() string {
 func CollectPackages() []Package {
 	var packages []Package
 
-	if !IsLinux() {
-		// Mock Data for non-Linux
-		return getMockPackages()
-	}
+
 
 	// Detect Distro and Package Manager
 	if CommandExists("dpkg") {
@@ -150,22 +147,9 @@ func CollectPackages() []Package {
 		}
 	}
 
-	if len(packages) == 0 {
-		return getMockPackages()
-	}
+
 
 	return packages
 }
 
-func getMockPackages() []Package {
-	return []Package{
-		{Name: "openssh-server", Version: "1:8.9p1-3ubuntu0.4"},
-		{Name: "ufw", Version: "0.36.1-4build1"},
-		{Name: "auditd", Version: "1:3.0.7-1build1"},
-		{Name: "curl", Version: "7.81.0-1ubuntu1.15"},
-		{Name: "wget", Version: "1.21.2-2ubuntu1"},
-		{Name: "vim", Version: "2:8.2.3995-1ubuntu2.15"},
-		{Name: "systemd", Version: "249.11-0ubuntu3.11"},
-		{Name: "linux-image-generic", Version: "5.15.0.91.91"},
-	}
-}
+

@@ -33,12 +33,6 @@ function formatOsLabel(osName, osVersion) {
   if (!osName) return 'Unknown OS';
   const combined = `${osName} ${osVersion || ''}`.trim();
 
-  // Replace the verbose Windows mock label
-  if (combined.toLowerCase().includes('windows') && combined.toLowerCase().includes('mocked')) {
-    const versionMatch = combined.match(/(\d+)/);
-    const ver = versionMatch ? versionMatch[1] : '11';
-    return `Windows ${ver} (Demo Mode)`;
-  }
   // Truncate excessively long strings
   if (combined.length > 36) {
     return combined.substring(0, 35) + '…';
@@ -47,24 +41,20 @@ function formatOsLabel(osName, osVersion) {
 }
 
 // --- Helper: Fix APIPA IPs ---
-const REALISTIC_IPS = [
-  '192.168.1.42', '10.0.0.17', '172.16.0.5', '192.168.10.23',
-  '10.10.1.99', '192.168.100.8', '172.20.15.3', '10.0.1.55',
-];
-const ipCache = {};
 function getRealisticIp(hostId, rawIp) {
-  if (!rawIp || !rawIp.startsWith('169.254.')) return rawIp;
-  if (!ipCache[hostId]) {
-    const idx = Object.keys(ipCache).length % REALISTIC_IPS.length;
-    ipCache[hostId] = REALISTIC_IPS[idx];
-  }
-  return ipCache[hostId];
+  return rawIp;
 }
 
 // --- Helper: Determine host status ---
 function getHostStatus(host) {
   if (!host.last_seen) return 'inactive';
-  const diffMs = Date.now() - new Date(host.last_seen).getTime();
+  const dateInput = host.last_seen;
+  const date = new Date(
+    typeof dateInput === 'string' && dateInput.includes(' ') 
+      ? dateInput.replace(' ', 'T') + 'Z' 
+      : dateInput
+  );
+  const diffMs = Date.now() - date.getTime();
   return diffMs < 120 * 1000 ? 'active' : 'inactive';
 }
 

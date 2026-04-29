@@ -16,7 +16,7 @@ type CISResult struct {
 
 func PerformCISChecks() []CISResult {
 	if !IsLinux() {
-		return getMockCISResults()
+		return []CISResult{}
 	}
 
 	var results []CISResult
@@ -279,17 +279,4 @@ func checkSSHBanner() CISResult {
 	}
 }
 
-func getMockCISResults() []CISResult {
-	return []CISResult{
-		{Name: "Ensure password max age is 90 days or less", Status: "PASS", Severity: "Medium", Evidence: "PASS_MAX_DAYS 90", Recommendation: "N/A"},
-		{Name: "Ensure password complexity requirements are configured", Status: "FAIL", Severity: "Medium", Evidence: "minlen not set", Recommendation: "Configure pam_pwquality"},
-		{Name: "Ensure SSH Root Login is disabled", Status: "PASS", Severity: "High", Evidence: "PermitRootLogin no", Recommendation: "N/A"},
-		{Name: "Ensure firewall is enabled", Status: "PASS", Severity: "High", Evidence: "ufw status active", Recommendation: "N/A"},
-		{Name: "Ensure time synchronization is configured", Status: "PASS", Severity: "Low", Evidence: "chrony active", Recommendation: "N/A"},
-		{Name: "Ensure auditd service is running", Status: "FAIL", Severity: "Medium", Evidence: "auditd inactive", Recommendation: "Enable auditd service"},
-		{Name: "Ensure AppArmor or SELinux is enabled", Status: "PASS", Severity: "High", Evidence: "AppArmor active", Recommendation: "N/A"},
-		{Name: "Ensure no world-writable files exist in sensitive paths", Status: "PASS", Severity: "High", Evidence: "Checked /etc/", Recommendation: "N/A"},
-		{Name: "Ensure GDM auto-login is disabled", Status: "PASS", Severity: "Medium", Evidence: "GDM not found", Recommendation: "N/A"},
-		{Name: "Ensure SSH warning banner is configured", Status: "FAIL", Severity: "Low", Evidence: "Banner not set", Recommendation: "Set Banner in sshd_config"},
-	}
-}
+

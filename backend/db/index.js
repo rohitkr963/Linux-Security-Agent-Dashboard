@@ -51,6 +51,10 @@ const initDB = () => {
         FOREIGN KEY(host_id) REFERENCES hosts(id) ON DELETE CASCADE
       )
     `);
+
+    // Indexes
+    db.run(`CREATE INDEX IF NOT EXISTS idx_packages_host_id ON packages(host_id)`);
+    db.run(`CREATE INDEX IF NOT EXISTS idx_cis_results_host_id ON cis_results(host_id)`);
   });
 };
 
@@ -86,3 +90,4 @@ module.exports = {
     });
   }
 };
+  
