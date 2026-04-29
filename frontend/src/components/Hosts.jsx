@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { formatRelativeTime } from '../utils/time';
 
-const API_URL = 'http://localhost:5000/api';
+const API_URL = 'http://16.170.241.111:5000/api';
 
 // --- Icon Library ---
 const Icons = {
