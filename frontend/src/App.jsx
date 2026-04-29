@@ -3,7 +3,7 @@ import Dashboard from './components/Dashboard';
 import Hosts from './components/Hosts';
 import HostDetails from './components/HostDetails';
 
-const API_URL = 'http://16.170.241.111:5000/api';
+const API_URL = 'https://hostguard.duckdns.org/api';
 
 function App() {
   const [currentPage, setCurrentPage] = useState('dashboard');
