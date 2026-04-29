@@ -1,0 +1,14 @@
+[Unit]
+Description=Linux Security Agent
+After=network.target
+
+[Service]
+ExecStart=/usr/bin/linux-security-agent
+Restart=always
+RestartSec=10
+StandardOutput=syslog
+StandardError=syslog
+SyslogIdentifier=linux-security-agent
+
+[Install]
+WantedBy=multi-user.target
