@@ -89,6 +89,17 @@ router.get('/hosts', async (req, res) => {
   }
 });
 
+// GET /api/hosts/:id
+router.get('/hosts/:id', async (req, res) => {
+  try {
+    const host = await db.get('SELECT * FROM hosts WHERE id = ?', [req.params.id]);
+    if (!host) return res.status(404).json({ error: 'Host not found' });
+    res.json(host);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // GET /api/hosts/:id/packages
 router.get('/hosts/:id/packages', async (req, res) => {
   try {
@@ -125,12 +136,34 @@ router.get('/dashboard/summary', async (req, res) => {
     const totalChecks = passedChecks + failedChecks;
     const compliancePercent = totalChecks > 0 ? Math.round((passedChecks / totalChecks) * 100) : 100;
 
+    // Fetch real alerts (recent failed checks)
+    const recentAlerts = await db.all(`
+      SELECT c.name as title, h.hostname as host, c.severity, h.last_seen as time
+      FROM cis_results c
+      JOIN hosts h ON c.host_id = h.id
+      WHERE c.status = 'FAIL'
+      ORDER BY h.last_seen DESC
+      LIMIT 4
+    `);
+
+    // Fetch real recent scans
+    const recentScans = await db.all(`
+      SELECT h.hostname, h.last_seen, 
+             (SELECT COUNT(*) FROM cis_results WHERE host_id = h.id AND status = 'PASS') as passed,
+             (SELECT COUNT(*) FROM cis_results WHERE host_id = h.id AND status = 'FAIL') as failed
+      FROM hosts h
+      ORDER BY h.last_seen DESC
+      LIMIT 3
+    `);
+
     res.json({
       totalHosts,
       totalPackages,
       passedChecks,
       failedChecks,
-      compliancePercent
+      compliancePercent,
+      recentAlerts,
+      recentScans
     });
   } catch (err) {
     res.status(500).json({ error: err.message });

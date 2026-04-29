@@ -1,4 +1,5 @@
 import React from 'react';
+import { formatRelativeTime } from '../utils/time';
 
 // Inline SVG Icons for zero-dependency modern look
 const Icons = {
@@ -20,46 +21,18 @@ const Icons = {
 };
 
 function Dashboard({ stats, onNavigateToHosts }) {
-  // Use seeded fallback data if real data hasn't reported yet
-  const isDemoMode = stats.totalHosts === 0;
-  
-  const displayStats = isDemoMode ? {
-    totalHosts: 4,
-    totalPackages: 1420,
-    passedChecks: 32,
-    failedChecks: 8,
-    compliancePercent: 80
-  } : stats;
-
-  const mockAlerts = [
-    { type: 'danger', title: 'SSH Root Login Enabled', host: 'prod-web-01', time: '10m ago' },
-    { type: 'warning', title: 'Firewall Disabled', host: 'staging-db', time: '45m ago' },
-    { type: 'success', title: 'Auditd Service Started', host: 'prod-api', time: '2h ago' },
-    { type: 'danger', title: 'World Writable Files Found', host: 'dev-box', time: '5h ago' }
-  ];
-
-  const mockScans = [
-    { host: 'prod-web-01', status: 'Compliant', score: '90%', time: 'Just now' },
-    { host: 'staging-db', status: 'Non-Compliant', score: '60%', time: '12m ago' },
-    { host: 'prod-api', status: 'Compliant', score: '100%', time: '1h ago' }
-  ];
+  const alerts = stats.recentAlerts || [];
+  const scans = stats.recentScans || [];
 
   return (
     <div>
-      {isDemoMode && (
-        <div className="demo-banner">
-          <span><strong>DEMO MODE:</strong> Currently showing seeded enterprise metrics. Run the Go Agent on a target machine to collect real-time telemetry.</span>
-          <button className="btn btn-outline" style={{ background: 'rgba(255,255,255,0.1)', color: 'white', border: 'none' }} onClick={onNavigateToHosts}>Manage Real Hosts</button>
-        </div>
-      )}
-
       <div className="stats-grid">
         <div className="card card-top-primary">
           <div className="card-header-flex">
             <div className="card-title">Total Endpoints</div>
             <div className="card-icon"><Icons.Host /></div>
           </div>
-          <div className="card-value">{displayStats.totalHosts}</div>
+          <div className="card-value">{stats.totalHosts}</div>
         </div>
 
         <div className="card card-top-primary">
@@ -67,7 +40,7 @@ function Dashboard({ stats, onNavigateToHosts }) {
             <div className="card-title">Discovered Packages</div>
             <div className="card-icon"><Icons.Package /></div>
           </div>
-          <div className="card-value">{displayStats.totalPackages}</div>
+          <div className="card-value">{stats.totalPackages}</div>
         </div>
 
         <div className="card card-top-success">
@@ -75,7 +48,7 @@ function Dashboard({ stats, onNavigateToHosts }) {
             <div className="card-title">Passed Controls</div>
             <div className="card-icon" style={{ color: 'var(--success)' }}><Icons.CheckCircle /></div>
           </div>
-          <div className="card-value" style={{ color: 'var(--success)' }}>{displayStats.passedChecks}</div>
+          <div className="card-value" style={{ color: 'var(--success)' }}>{stats.passedChecks}</div>
         </div>
 
         <div className="card card-top-danger">
@@ -83,16 +56,16 @@ function Dashboard({ stats, onNavigateToHosts }) {
             <div className="card-title">Failed Controls</div>
             <div className="card-icon" style={{ color: 'var(--danger)' }}><Icons.AlertTriangle /></div>
           </div>
-          <div className="card-value" style={{ color: 'var(--danger)' }}>{displayStats.failedChecks}</div>
+          <div className="card-value" style={{ color: 'var(--danger)' }}>{stats.failedChecks}</div>
         </div>
 
         <div className="card card-top-success">
           <div className="card-header-flex">
             <div className="card-title">Compliance Score</div>
-            <div className="card-icon" style={{ color: displayStats.compliancePercent >= 80 ? 'var(--success)' : 'var(--warning)' }}><Icons.Shield /></div>
+            <div className="card-icon" style={{ color: stats.compliancePercent >= 80 ? 'var(--success)' : 'var(--warning)' }}><Icons.Shield /></div>
           </div>
-          <div className="card-value" style={{ color: displayStats.compliancePercent >= 80 ? 'var(--success)' : 'var(--warning)' }}>
-            {displayStats.compliancePercent}%
+          <div className="card-value" style={{ color: stats.compliancePercent >= 80 ? 'var(--success)' : 'var(--warning)' }}>
+            {stats.compliancePercent}%
           </div>
         </div>
       </div>
@@ -101,35 +74,39 @@ function Dashboard({ stats, onNavigateToHosts }) {
         <div>
           <h3 className="section-title"><Icons.AlertTriangle /> Critical Security Alerts</h3>
           <div className="activity-list">
-            {mockAlerts.map((alert, i) => (
+            {alerts.length > 0 ? alerts.map((alert, i) => (
               <div className="activity-item" key={i}>
-                <div className={`activity-indicator bg-${alert.type}`} />
+                <div className={`activity-indicator bg-${alert.severity === 'High' ? 'danger' : (alert.severity === 'Medium' ? 'warning' : 'primary')}`} />
                 <div className="activity-content">
                   <div className="activity-title">{alert.title}</div>
                   <div className="activity-desc">Host: <code>{alert.host}</code></div>
                 </div>
-                <div className="activity-time">{alert.time}</div>
+                <div className="activity-time">{formatRelativeTime(alert.time)}</div>
               </div>
-            ))}
+            )) : <div className="activity-desc" style={{ padding: '0.5rem 0' }}>No active security alerts</div>}
           </div>
         </div>
 
         <div>
           <h3 className="section-title"><Icons.Shield /> Latest Scan Logs</h3>
           <div className="activity-list">
-            {mockScans.map((scan, i) => (
+            {scans.length > 0 ? scans.map((scan, i) => {
+              const total = scan.passed + scan.failed;
+              const hasFailed = scan.failed > 0;
+              const ratio = total > 0 ? Math.round((scan.passed/total)*100) : 0;
+              return (
               <div className="activity-item" key={i} style={{ background: '#f8fafc' }}>
                 <div className="activity-content">
-                  <div className="activity-title" style={{ fontWeight: 700 }}>{scan.host}</div>
+                  <div className="activity-title" style={{ fontWeight: 700 }}>{scan.hostname}</div>
                   <div className="activity-desc">
-                    <span className={`badge ${scan.status === 'Compliant' ? 'badge-success' : 'badge-danger'}`} style={{ marginTop: '0.25rem' }}>
-                      {scan.status} ({scan.score})
+                    <span className={`badge ${!hasFailed ? 'badge-success' : 'badge-danger'}`} style={{ marginTop: '0.25rem' }}>
+                      {!hasFailed ? 'Compliant' : 'Non-Compliant'} ({ratio}%)
                     </span>
                   </div>
                 </div>
-                <div className="activity-time">{scan.time}</div>
+                <div className="activity-time">{formatRelativeTime(scan.last_seen)}</div>
               </div>
-            ))}
+            )}) : <div className="activity-desc" style={{ padding: '0.5rem 0' }}>No recent scans available</div>}
           </div>
         </div>
       </div>
