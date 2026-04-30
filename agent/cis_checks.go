@@ -51,6 +51,12 @@ func PerformCISChecks() []CISResult {
 	// 10. SSH Banner Configured
 	results = append(results, checkSSHBanner())
 
+	// 11. Unused Filesystems Disabled
+	results = append(results, checkUnusedFilesystems())
+
+	// 12. Password Reuse Restricted
+	results = append(results, checkPasswordReuse())
+
 	return results
 }
 
@@ -279,4 +285,52 @@ func checkSSHBanner() CISResult {
 	}
 }
 
+func checkUnusedFilesystems() CISResult {
+	// Simple check for cramfs in modprobe
+	found, evidence := fileContains("/etc/modprobe.d/cramfs.conf", "install cramfs /bin/true")
+	status := "FAIL"
+	if found {
+		status = "PASS"
+	} else {
+		if CommandExists("modprobe") {
+			out, err := RunCommand("modprobe", "-n", "-v", "cramfs")
+			if err == nil && strings.Contains(out, "install /bin/true") {
+				status = "PASS"
+				evidence = "cramfs is disabled via modprobe"
+			}
+		}
+	}
+	if evidence == "Configuration not found" {
+		evidence = "cramfs kernel module is not disabled in modprobe.d"
+	}
 
+	return CISResult{
+		Name:           "Ensure mounting of cramfs filesystems is disabled",
+		Status:         status,
+		Severity:       "Low",
+		Evidence:       evidence,
+		Recommendation: "Create /etc/modprobe.d/cramfs.conf with 'install cramfs /bin/true'",
+	}
+}
+
+func checkPasswordReuse() CISResult {
+	found, evidence := fileContains("/etc/pam.d/common-password", "remember=")
+	status := "FAIL"
+	if found {
+		status = "PASS"
+	} else if f, ev := fileContains("/etc/security/opasswd", ""); f {
+		evidence = ev
+	}
+	
+	if evidence == "Configuration not found" {
+		evidence = "Password history (remember=5) not found in pam configuration"
+	}
+
+	return CISResult{
+		Name:           "Ensure password reuse is limited",
+		Status:         status,
+		Severity:       "Medium",
+		Evidence:       evidence,
+		Recommendation: "Add 'remember=5' to pam_pwhistory.so in /etc/pam.d/common-password",
+	}
+}

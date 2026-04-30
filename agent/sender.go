@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"os"
 )
 
 type Payload struct {
@@ -25,7 +26,22 @@ func SendPayload(url string, hostInfo HostInfo, packages []Package, cisResults [
 		return fmt.Errorf("error marshaling payload: %v", err)
 	}
 
-	resp, err := http.Post(url, "application/json", bytes.NewBuffer(jsonData))
+	req, err := http.NewRequest("POST", url, bytes.NewBuffer(jsonData))
+	if err != nil {
+		return fmt.Errorf("error creating request: %v", err)
+	}
+
+	req.Header.Set("Content-Type", "application/json")
+	
+	// Add Agent Authentication Key (in production, use env var)
+	apiKey := os.Getenv("HG_API_KEY")
+	if apiKey == "" {
+		apiKey = "hg_sk_live_v1_demo_key_9283"
+	}
+	req.Header.Set("x-api-key", apiKey)
+
+	client := &http.Client{}
+	resp, err := client.Do(req)
 	if err != nil {
 		return fmt.Errorf("error sending POST request: %v", err)
 	}

@@ -56,6 +56,10 @@ func CollectHostInfo() HostInfo {
 			}
 		}
 
+		if info.OSName == "" {
+			info.OSName = "Linux"
+		}
+
 		// Kernel Version via uname -r
 		if out, err := RunCommand("uname", "-r"); err == nil {
 			info.KernelVersion = out
