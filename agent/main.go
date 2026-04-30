@@ -4,7 +4,7 @@ import (
 	"time"
 )
 
-const BackendURL = "http://localhost:5000/api/ingest"
+const BackendURL = "https://hostguard.duckdns.org/api/report"
 
 func main() {
 	InitLogger()
