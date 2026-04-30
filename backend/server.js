@@ -1,13 +1,14 @@
 const express = require('express');
-const cors = require('cors');
+const cors    = require('cors');
+require('./db/database');          // ensure DB schema initialises early
 const apiRoutes = require('./routes/api');
 
-const app = express();
+const app  = express();
 const PORT = process.env.PORT || 5000;
 
 const API_KEY = process.env.API_KEY || 'hg_sk_live_v1_demo_key_9283';
 
-// Middleware
+// ── Middleware ────────────────────────────────────────────────────────────────
 app.use(cors({
   origin: '*',
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
@@ -15,6 +16,12 @@ app.use(cors({
 }));
 
 app.use(express.json({ limit: '10mb' }));
+
+// Request logger
+app.use((req, _res, next) => {
+  console.log(`[${new Date().toISOString()}] ${req.method} ${req.originalUrl}`);
+  next();
+});
 
 // Agent Authentication Middleware
 app.use('/api/ingest', (req, res, next) => {
@@ -25,15 +32,23 @@ app.use('/api/ingest', (req, res, next) => {
   next();
 });
 
-// Routes
+// ── Routes ────────────────────────────────────────────────────────────────────
 app.use('/api', apiRoutes);
 
-// Health Check
-app.get('/health', (req, res) => {
-  res.json({ status: 'OK', timestamp: new Date().toISOString() });
+app.get('/health', (_req, res) =>
+  res.json({ status: 'OK', timestamp: new Date().toISOString() })
+);
+
+// ── 404 handler ───────────────────────────────────────────────────────────────
+app.use((_req, res) => res.status(404).json({ error: 'Route not found' }));
+
+// ── Global error handler ──────────────────────────────────────────────────────
+app.use((err, _req, res, _next) => {
+  console.error('[ERROR]', err.message);
+  res.status(500).json({ error: 'Internal Server Error' });
 });
 
-// Start Server
-app.listen(PORT, "0.0.0.0", () => {
-  console.log(`Server running on port ${PORT}`);
-});
+// ── Start ─────────────────────────────────────────────────────────────────────
+app.listen(PORT, '0.0.0.0', () =>
+  console.log(`[SERVER] Running on http://0.0.0.0:${PORT}`)
+);

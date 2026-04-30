@@ -266,6 +266,58 @@ tr:hover td {
 .badge-danger { background-color: var(--danger-bg); color: var(--danger); }
 .badge-warning { background-color: var(--warning-bg); color: var(--warning); }
 
+/* Skeletons */
+@keyframes skeletonPulse {
+  0% { opacity: 0.6; }
+  50% { opacity: 0.3; }
+  100% { opacity: 0.6; }
+}
+.skeleton-card {
+  background: #f8fafc;
+  border-radius: var(--radius);
+  height: 120px;
+  animation: skeletonPulse 1.5s infinite ease-in-out;
+  border: 1px solid var(--border);
+}
+.skeleton-row {
+  height: 48px;
+  background: #f8fafc;
+  border-radius: var(--radius-sm);
+  margin-bottom: 0.5rem;
+  animation: skeletonPulse 1.5s infinite ease-in-out;
+}
+
+/* Status extensions */
+.hosts-badge-warning { background: #fffbeb; color: #d97706; border: 1px solid #fde68a; }
+.hosts-dot-warning { background: #f59e0b; box-shadow: 0 0 0 2.5px rgba(245,158,11,0.25); }
+
+/* Chart Containers */
+.chart-card {
+  background: var(--bg-card);
+  padding: 1.5rem;
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-sm);
+  border: 1px solid var(--border);
+  height: 350px;
+  display: flex;
+  flex-direction: column;
+}
+.chart-wrapper {
+  flex-grow: 1;
+  min-height: 250px;
+}
+.chart-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1.5rem;
+  margin-bottom: 2.5rem;
+}
+@media (max-width: 1024px) {
+  .chart-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
 /* Buttons */
 .btn {
   display: inline-flex;
